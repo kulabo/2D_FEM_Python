@@ -14,7 +14,7 @@ class FEM:
         self.F = F
 
         #self.E0 = 2.1*(10**11)
-        self.E0 = 1.0
+        self.E0 = 1
         self.Emin = 1e-3
 
         self.all_element_count = nx*ny
@@ -59,10 +59,13 @@ class FEM:
         self.rho = rho
 
         K = self._Kmat()
-        # np.savetxt('K.csv', K, delimiter=',')
+        np.savetxt('confirm_data/K_py.csv', K, delimiter=',')
 
-        K_free = np.stack([K[self.free_nodes, col_index]
-                           for col_index in self.free_nodes]).T
+        #K_free = np.stack([K[self.free_nodes, col_index]
+        #                   for col_index in self.free_nodes]).T
+        K_free = K[self.free_nodes].T[self.free_nodes].T
+        print(K_free)
+        print((K_free[1][0]+K_free[1][2])/(K_free[1][1]+K_free[1][3]))
         U = np.zeros(self.all_vector_count)
         U[self.free_nodes] = np.linalg.solve(K_free, self.F[self.free_nodes])
 
@@ -78,14 +81,16 @@ class FEM:
         for y in range(self.ny):
             for x in range(self.nx):
                 Ke = self._Kemat(x, y)
-                top1 = 2*((self.ny+1)*x+y)
-                top2 = 2*((self.ny+1)*(x+1)+y)
-                K[top1:top1+4, top1:top1+4] += Ke[0:4, 0:4]
-                K[top1:top1+4, top2:top2+4] += Ke[0:4, 4:8]
-                K[top2:top2+4, top1:top1+4] += Ke[4:8, 0:4]
-                K[top2:top2+4, top2:top2+4] += Ke[4:8, 4:8]
-        
-        #print(Ke==K)
+                np.savetxt('confirm_data/Ke_py.csv', Ke, delimiter=',')
+                elem=[0,1,6,7,2,3,4,5]
+                #top1 = 2*((self.ny+1)*x+y)
+                #top2 = 2*((self.ny+1)*(x+1)+y)
+                #K[top1:top1+4, top1:top1+4] += Ke[0:4, 0:4]
+                #K[top1:top1+4, top2:top2+4] += Ke[0:4, 4:8]
+                #K[top2:top2+4, top1:top1+4] += Ke[4:8, 0:4]
+                #K[top2:top2+4, top2:top2+4] += Ke[4:8, 4:8]
+                K = Ke[elem].T[elem].T
+
         return K
 
     # stiffness matrix of one element
@@ -102,13 +107,10 @@ class FEM:
             dNdxi = self._dNdxi(eta)
             dNdeta = self._dNdeta(xi)
             J = self._Jmat(x, y, dNdxi, dNdeta)
+            # B = self._Bmat_matlab(dNdxi, dNdeta)
             B = self._Bmat(J, dNdxi, dNdeta)
-            # B = self._Bmat(dNdxi, dNdeta)
-            print(B)
             # Bマトリクスは算出方法が違うので値は同じにならない
             Ke += w*(B.T @ D) @ B*np.linalg.det(J)
-            # print(Ke)
-
         return Ke
 
     def _Jmat(self, x, y, dNdxi, dNdeta):
@@ -134,10 +136,13 @@ class FEM:
     def _dNdeta(self, xi):
         return np.array([-0.25*(1-xi), -0.25*(1+xi), 0.25*(1+xi), 0.25*(1-xi)])
 
-    
     def _Bmat(self, J, dNdxi, dNdeta):
         B = np.zeros([3, 8])
+        # print("dNdxi:",dNdxi)
+        # print("dNdeta:", dNdeta)
+
         dNdx_dNdy = np.linalg.inv(J) @ np.stack([dNdxi, dNdeta])
+        # print(dNdx_dNdy)
         for i in range(4):
             dNidx = dNdx_dNdy[0][i]
             dNidy = dNdx_dNdy[1][i]
@@ -147,7 +152,6 @@ class FEM:
             B[2][2*i] = dNidy
             B[2][2*i+1] = dNidx
         return B
-    
 
     def plot_mesh(self):
         x_list = [row[0] for row in self.node_coordinate_values]
@@ -156,7 +160,7 @@ class FEM:
         #y_list[2], y_list[3] = y_list[3], y_list[2]
 
         #plt.fill(x_list, y_list, c="r",alpha=0.5)
-        print(x_list,y_list)
+        print(x_list, y_list)
         plt.scatter(x_list, y_list, c="r", alpha=0.5)
         #plt.plot(x_list, y_list)
 
@@ -177,14 +181,12 @@ class FEM:
 
         plt.show()
 
-    '''
-    def _Bmat(self, dNdx, dNde):
+    def _Bmat_matlab(self, dNdx, dNde):
         B = np.array([[dNdx[0],       0, dNdx[1],       0, dNdx[2],       0, dNdx[3],       0],
                       [0, dNde[0],       0, dNde[1],
                           0, dNde[2],       0, dNde[3]],
                       [dNde[0], dNdx[0], dNde[1], dNdx[1], dNde[2], dNdx[2], dNde[3], dNdx[3]]])
         return B
-    '''
 
     '''
     # shape function matrix
@@ -207,7 +209,6 @@ class FEM:
         x_list = [row[0] for row in self.node_coordinate_values]
         y_list = [row[1] for row in self.node_coordinate_values]
 
-
         with open("mesh_data/mesh.plt", "w") as plt_file:
             plt_file.write(plt_text_header)
             content = [x_list, y_list,
@@ -226,26 +227,28 @@ def main():
     nx = 1
     ny = 1
 
-    vol = 1
+    vol = 0.5
     pnl = 3
     mesh_size = 1
 
     # x=0 edge fix
-    fix_nodes = np.array([2*(node*(nx+1)) for node in range(ny+1)])
+    #fix_nodes = np.array([2*(node*(nx+1)) for node in range(ny+1)])
 
-    # fix_nodes = np.array([0, 1, 3, 4])
-    # fix_nodes = np.array([0, 1, 2, 3])
+    fix_nodes = np.array([0, 1, 2, 5])
+    # fix_nodes = np.array([0, 1,2, 3])
 
     # x=nx(*mesh_size) edge force
     F = np.zeros(2*(nx+1)*(ny+1))
-    for node in range(ny+1):
-        F[2*(node*(nx+1)+nx)] = 1
+    #for node in range(ny+1):
+    #    F[2*(node*(nx+1)+nx)] = 1
+    F[4] = 1
+    F[6] = 1
     # print(F)
 
     rho = vol*np.ones([nx, ny])
     # rho = np.random.rand(nx,ny)
 
-    fem_obj = FEM(pnl, nx, ny, mesh_size, fix_nodes,F)
+    fem_obj = FEM(pnl, nx, ny, mesh_size, fix_nodes, F)
     U, l = fem_obj.fem(rho)
 
     print("U:", U)
