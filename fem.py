@@ -57,6 +57,7 @@ class FEM:
     # fenite element method
     def fem(self, rho):
         self.rho = rho
+        print(self.node_coordinate_values)
 
         K = self._Kmat()
         np.savetxt('confirm_data/K_py.csv', K, delimiter=',')
@@ -64,8 +65,6 @@ class FEM:
         #K_free = np.stack([K[self.free_nodes, col_index]
         #                   for col_index in self.free_nodes]).T
         K_free = K[self.free_nodes].T[self.free_nodes].T
-        print(K_free)
-        print((K_free[1][0]+K_free[1][2])/(K_free[1][1]+K_free[1][3]))
         U = np.zeros(self.all_vector_count)
         U[self.free_nodes] = np.linalg.solve(K_free, self.F[self.free_nodes])
 
@@ -82,14 +81,11 @@ class FEM:
             for x in range(self.nx):
                 Ke = self._Kemat(x, y)
                 np.savetxt('confirm_data/Ke_py.csv', Ke, delimiter=',')
-                elem=[0,1,6,7,2,3,4,5]
-                #top1 = 2*((self.ny+1)*x+y)
-                #top2 = 2*((self.ny+1)*(x+1)+y)
-                #K[top1:top1+4, top1:top1+4] += Ke[0:4, 0:4]
-                #K[top1:top1+4, top2:top2+4] += Ke[0:4, 4:8]
-                #K[top2:top2+4, top1:top1+4] += Ke[4:8, 0:4]
-                #K[top2:top2+4, top2:top2+4] += Ke[4:8, 4:8]
-                K = Ke[elem].T[elem].T
+                top1 = (self.ny+1)*x+y
+                top2 = (self.ny+1)*(x+1)+y
+                elem = [2*top1, 2*top1+1, 2*top2, 2*top2+1, 2*top2+2, 2*top2+3, 2*top1+2, 2*top1+3]
+                for index, one_elem in enumerate(elem):
+                    K[elem, one_elem] += Ke[index]
 
         return K
 
@@ -124,8 +120,10 @@ class FEM:
 
         x_nodes = np.array([x, x+1, x+1, x])
         y_nodes = np.array([y, y, y+1, y+1])
+        # TODO use coordinate_value
 
-        J = np.stack([dNdxi, dNdeta]) @ np.stack([x_nodes, y_nodes]).T
+        J = np.stack([dNdxi, dNdeta]) @ (
+            np.stack([x_nodes, y_nodes])*self.mesh_size).T
         return J
 
     # partial derivative of shape function (N) with respect to xi
@@ -138,11 +136,8 @@ class FEM:
 
     def _Bmat(self, J, dNdxi, dNdeta):
         B = np.zeros([3, 8])
-        # print("dNdxi:",dNdxi)
-        # print("dNdeta:", dNdeta)
 
         dNdx_dNdy = np.linalg.inv(J) @ np.stack([dNdxi, dNdeta])
-        # print(dNdx_dNdy)
         for i in range(4):
             dNidx = dNdx_dNdy[0][i]
             dNidy = dNdx_dNdy[1][i]
@@ -156,25 +151,11 @@ class FEM:
     def plot_mesh(self):
         x_list = [row[0] for row in self.node_coordinate_values]
         y_list = [row[1] for row in self.node_coordinate_values]
-        #x_list[2], x_list[3] = x_list[3], x_list[2]
-        #y_list[2], y_list[3] = y_list[3], y_list[2]
 
         #plt.fill(x_list, y_list, c="r",alpha=0.5)
-        print(x_list, y_list)
         plt.scatter(x_list, y_list, c="r", alpha=0.5)
         #plt.plot(x_list, y_list)
 
-        '''
-        x_list[0] += self.U[2*0]
-        x_list[1] += self.U[2*1]
-        x_list[2] += self.U[2*3]
-        x_list[3] += self.U[2*2]
-
-        y_list[0] += self.U[2*0+1]
-        y_list[1] += self.U[2*1+1]
-        y_list[2] += self.U[2*3+1]
-        y_list[3] += self.U[2*2+1]
-        '''
         #plt.fill(x_list+self.U[::2], y_list+self.U[1::2], c="b", alpha=0.5)
         plt.scatter(x_list+self.U[::2], y_list+self.U[1::2], c="b", alpha=0.5)
         #plt.axes().set_aspect('equal', 'datalim')
@@ -224,26 +205,24 @@ class FEM:
 
 def main():
     start_time = time.time()
-    nx = 1
-    ny = 1
+    nx = 2
+    ny = 2
 
     vol = 0.5
     pnl = 3
     mesh_size = 1
 
     # x=0 edge fix
-    #fix_nodes = np.array([2*(node*(nx+1)) for node in range(ny+1)])
+    #fix_nodes = np.array([i for i in range(2*(ny+1))])
 
     fix_nodes = np.array([0, 1, 2, 5])
-    # fix_nodes = np.array([0, 1,2, 3])
 
     # x=nx(*mesh_size) edge force
     F = np.zeros(2*(nx+1)*(ny+1))
-    #for node in range(ny+1):
-    #    F[2*(node*(nx+1)+nx)] = 1
+    #for i in range(nx):
+    #F[2*((nx+1)*(ny)+1+i)-1] = 1
     F[4] = 1
     F[6] = 1
-    # print(F)
 
     rho = vol*np.ones([nx, ny])
     # rho = np.random.rand(nx,ny)
@@ -256,7 +235,7 @@ def main():
     print("elapse time [sec]:", time.time()-start_time)
 
     #fem_obj.plot_mesh()
-    fem_obj.tecplot()
+    #fem_obj.tecplot()
 
 
 if __name__ == "__main__":
