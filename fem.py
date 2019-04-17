@@ -25,7 +25,7 @@ class FEM:
             np.arange(self.all_vector_count), fix_nodes)
 
         self.node_coordinate_values = np.array(
-            [[x, y] for y in range(ny+1) for x in range(nx+1)])*mesh_size
+            [[x, y] for x in range(nx+1) for y in range(ny+1)])*mesh_size
 
         # start from 1
         # [[elem1node1,elem1node2,elem1node3,elem1node4],
@@ -57,7 +57,7 @@ class FEM:
     # fenite element method
     def fem(self, rho):
         self.rho = rho
-        print(self.node_coordinate_values)
+        #print(self.node_coordinate_values)
 
         K = self._Kmat()
         np.savetxt('confirm_data/K_py.csv', K, delimiter=',')
@@ -205,24 +205,26 @@ class FEM:
 
 def main():
     start_time = time.time()
-    nx = 2
-    ny = 2
+    nx = 1
+    ny = 1
 
     vol = 0.5
     pnl = 3
     mesh_size = 1
 
-    # x=0 edge fix
-    #fix_nodes = np.array([i for i in range(2*(ny+1))])
+    fix_x = np.zeros((nx+1)*(ny+1), dtype=int)
+    fix_y = np.zeros((nx+1)*(ny+1), dtype=int)
 
-    fix_nodes = np.array([0, 1, 2, 5])
+    fix_x[:nx+1]=1
+    fix_y[::ny+1]=1
 
-    # x=nx(*mesh_size) edge force
-    F = np.zeros(2*(nx+1)*(ny+1))
-    #for i in range(nx):
-    #F[2*((nx+1)*(ny)+1+i)-1] = 1
-    F[4] = 1
-    F[6] = 1
+    
+    Fx = np.ones((nx+1)*(ny+1), dtype=int)
+    Fy = np.zeros((nx+1)*(ny+1), dtype=int)
+
+
+    fix_nodes = np.array([[x, y] for x, y in zip(fix_x, fix_y)]).flatten()
+    F = np.array([[x, y] for x, y in zip(Fx, Fy)]).flatten()
 
     rho = vol*np.ones([nx, ny])
     # rho = np.random.rand(nx,ny)
@@ -235,7 +237,7 @@ def main():
     print("elapse time [sec]:", time.time()-start_time)
 
     #fem_obj.plot_mesh()
-    #fem_obj.tecplot()
+    fem_obj.tecplot()
 
 
 if __name__ == "__main__":
