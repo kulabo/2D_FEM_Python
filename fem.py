@@ -45,6 +45,7 @@ class FEM:
                                [3 ** (-0.5),  3 ** (-0.5)],
                                [-3 ** (-0.5),  3 ** (-0.5)]])
         self.weight = np.array([1, 1, 1, 1])
+        # 本来は重みは2つ必要
 
         nu = 0.3
         # nu: poisson ratio
@@ -60,10 +61,7 @@ class FEM:
         #print(self.node_coordinate_values)
 
         K = self._Kmat()
-        np.savetxt('confirm_data/K_py.csv', K, delimiter=',')
 
-        #K_free = np.stack([K[self.free_nodes, col_index]
-        #                   for col_index in self.free_nodes]).T
         K_free = K[self.free_nodes].T[self.free_nodes].T
         U = np.zeros(self.all_vector_count)
         U[self.free_nodes] = np.linalg.solve(K_free, self.F[self.free_nodes])
@@ -83,7 +81,9 @@ class FEM:
                 np.savetxt('confirm_data/Ke_py.csv', Ke, delimiter=',')
                 top1 = (self.ny+1)*x+y
                 top2 = (self.ny+1)*(x+1)+y
-                elem = [2*top1, 2*top1+1, 2*top2, 2*top2+1, 2*top2+2, 2*top2+3, 2*top1+2, 2*top1+3]
+                elem = [2*top1, 2*top1+1, 2*top2, 2*top2+1,
+                        2*top2+2, 2*top2+3, 2*top1+2, 2*top1+3]
+                print(elem)
                 for index, one_elem in enumerate(elem):
                     K[elem, one_elem] += Ke[index]
 
@@ -212,19 +212,22 @@ def main():
     pnl = 3
     mesh_size = 1
 
-    fix_x = np.zeros((nx+1)*(ny+1), dtype=int)
-    fix_y = np.zeros((nx+1)*(ny+1), dtype=int)
-
-    fix_x[:nx+1]=1
-    fix_y[::ny+1]=1
-
-    
-    Fx = np.ones((nx+1)*(ny+1), dtype=int)
+    Fx = np.zeros((nx+1)*(ny+1), dtype=int)
     Fy = np.zeros((nx+1)*(ny+1), dtype=int)
 
+    fix_x = list(range(nx+1))
+    fix_y = [i for i in range(0, (nx+1)*(ny+1), ny+1)]
 
-    fix_nodes = np.array([[x, y] for x, y in zip(fix_x, fix_y)]).flatten()
+    Fx[-(ny+1):] = 1
+
+    fix_x = np.array(fix_x)
+    fix_y = np.array(fix_y)
+    fix_nodes = np.r_[2*fix_x, 2*fix_y+1]
+
     F = np.array([[x, y] for x, y in zip(Fx, Fy)]).flatten()
+
+    print("fix_nodes:", fix_nodes)
+    print("F:", F)
 
     rho = vol*np.ones([nx, ny])
     # rho = np.random.rand(nx,ny)
