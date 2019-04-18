@@ -1,7 +1,7 @@
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-
+from tqdm import tqdm
 
 class FEM:
     def __init__(self, pnl, nx, ny, mesh_size, fix_nodes, F):
@@ -13,8 +13,8 @@ class FEM:
         self.fix_nodes = fix_nodes
         self.F = F
 
-        #self.E0 = 2.1*(10**11)
-        self.E0 = 1
+        #self.E0 = 2.1*(10**8)
+        self.E0 = 3
         self.Emin = 1e-3
 
         self.all_element_count = nx*ny
@@ -75,15 +75,14 @@ class FEM:
     # stiffness matrix
     def _Kmat(self):
         K = np.zeros([self.all_vector_count, self.all_vector_count])
-        for y in range(self.ny):
+        for y in tqdm(range(self.ny)):
             for x in range(self.nx):
                 Ke = self._Kemat(x, y)
-                np.savetxt('confirm_data/Ke_py.csv', Ke, delimiter=',')
+                #np.savetxt('confirm_data/Ke_py.csv', Ke, delimiter=',')
                 top1 = (self.ny+1)*x+y
                 top2 = (self.ny+1)*(x+1)+y
                 elem = [2*top1, 2*top1+1, 2*top2, 2*top2+1,
                         2*top2+2, 2*top2+3, 2*top1+2, 2*top1+3]
-                print(elem)
                 for index, one_elem in enumerate(elem):
                     K[elem, one_elem] += Ke[index]
 
@@ -117,9 +116,10 @@ class FEM:
         |     |
         1 --- 2
         '''
-
+        #x1=self.node_coordinate_values
         x_nodes = np.array([x, x+1, x+1, x])
         y_nodes = np.array([y, y, y+1, y+1])
+
         # TODO use coordinate_value
 
         J = np.stack([dNdxi, dNdeta]) @ (
@@ -161,7 +161,8 @@ class FEM:
         #plt.axes().set_aspect('equal', 'datalim')
 
         plt.show()
-
+    
+    '''
     def _Bmat_matlab(self, dNdx, dNde):
         B = np.array([[dNdx[0],       0, dNdx[1],       0, dNdx[2],       0, dNdx[3],       0],
                       [0, dNde[0],       0, dNde[1],
@@ -169,7 +170,6 @@ class FEM:
                       [dNde[0], dNdx[0], dNde[1], dNdx[1], dNde[2], dNdx[2], dNde[3], dNdx[3]]])
         return B
 
-    '''
     # shape function matrix
     def _Nmat(self, xi, eta):
         N1 = 0.25*(1-xi)*(1-eta)
@@ -205,19 +205,19 @@ class FEM:
 
 def main():
     start_time = time.time()
-    nx = 1
-    ny = 1
+    nx = 10
+    ny = 10
 
     vol = 0.5
     pnl = 3
-    mesh_size = 1
+    mesh_size = 10
 
     Fx = np.zeros((nx+1)*(ny+1), dtype=int)
     Fy = np.zeros((nx+1)*(ny+1), dtype=int)
 
-    fix_x = list(range(nx+1))
+    fix_x = list(range(ny+1))
     fix_y = [i for i in range(0, (nx+1)*(ny+1), ny+1)]
-
+    
     Fx[-(ny+1):] = 1
 
     fix_x = np.array(fix_x)
@@ -225,9 +225,10 @@ def main():
     fix_nodes = np.r_[2*fix_x, 2*fix_y+1]
 
     F = np.array([[x, y] for x, y in zip(Fx, Fy)]).flatten()
+    #print(F)
 
-    print("fix_nodes:", fix_nodes)
-    print("F:", F)
+    #print("fix_nodes:", fix_nodes)
+    #print("F:", F)
 
     rho = vol*np.ones([nx, ny])
     # rho = np.random.rand(nx,ny)
@@ -235,12 +236,12 @@ def main():
     fem_obj = FEM(pnl, nx, ny, mesh_size, fix_nodes, F)
     U, l = fem_obj.fem(rho)
 
-    print("U:", U)
+    #print("U:", U)
     print("l:", l)
     print("elapse time [sec]:", time.time()-start_time)
 
-    #fem_obj.plot_mesh()
     fem_obj.tecplot()
+    fem_obj.plot_mesh()
 
 
 if __name__ == "__main__":
