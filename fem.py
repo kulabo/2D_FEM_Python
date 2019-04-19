@@ -153,13 +153,18 @@ class FEM:
         y_list = [row[1] for row in self.node_coordinate_values]
 
         #plt.fill(x_list, y_list, c="r",alpha=0.5)
-        plt.scatter(x_list, y_list, c="r", alpha=0.5)
+        plt.scatter(x_list, y_list, c="r", alpha=0.5, label="initial")
         #plt.plot(x_list, y_list)
 
         #plt.fill(x_list+self.U[::2], y_list+self.U[1::2], c="b", alpha=0.5)
-        plt.scatter(x_list+self.U[::2], y_list+self.U[1::2], c="b", alpha=0.5)
+        plt.scatter(x_list+self.U[::2], y_list +
+                    self.U[1::2], c="b", alpha=0.5, label="transformed")
         #plt.axes().set_aspect('equal', 'datalim')
 
+        #plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left',
+        #           borderaxespad=0, fontsize=18)
+        plt.legend()
+        plt.savefig('mesh_data/mesh.png')
         plt.show()
     
     '''
