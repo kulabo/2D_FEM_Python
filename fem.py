@@ -210,8 +210,8 @@ class FEM:
 
 def main():
     start_time = time.time()
-    nx = 30
-    ny = 30
+    nx = 50
+    ny = 50
 
     vol = 1
     pnl = 3
