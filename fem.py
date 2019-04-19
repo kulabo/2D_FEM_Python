@@ -14,7 +14,7 @@ class FEM:
         self.F = F
 
         #self.E0 = 2.1*(10**8)
-        self.E0 = 3
+        self.E0 = 100
         self.Emin = 1e-3
 
         self.all_element_count = nx*ny
@@ -47,7 +47,7 @@ class FEM:
         self.weight = np.array([1, 1, 1, 1])
         # 本来は重みは2つ必要
 
-        nu = 0.3
+        nu = 1/3
         # nu: poisson ratio
         # 平面応力状態
         self._Cmat = np.array([[1, nu, 0],
@@ -210,20 +210,24 @@ class FEM:
 
 def main():
     start_time = time.time()
-    nx = 10
-    ny = 10
+    nx = 30
+    ny = 30
 
-    vol = 0.5
+    vol = 1
     pnl = 3
-    mesh_size = 10
+    mesh_size = 1
 
-    Fx = np.zeros((nx+1)*(ny+1), dtype=int)
-    Fy = np.zeros((nx+1)*(ny+1), dtype=int)
+    uniformly_distributed_F=10
+
+    Fx = np.zeros((nx+1)*(ny+1))
+    Fy = np.zeros((nx+1)*(ny+1))
 
     fix_x = list(range(ny+1))
     fix_y = [i for i in range(0, (nx+1)*(ny+1), ny+1)]
     
-    Fx[-(ny+1):] = 1
+    Fx[-(ny+1):] = uniformly_distributed_F
+    Fx[-(ny+1)] *= 0.5
+    Fx[-1] *= 0.5
 
     fix_x = np.array(fix_x)
     fix_y = np.array(fix_y)
@@ -241,7 +245,7 @@ def main():
     fem_obj = FEM(pnl, nx, ny, mesh_size, fix_nodes, F)
     U, l = fem_obj.fem(rho)
 
-    #print("U:", U)
+    print("U:", U)
     print("l:", l)
     print("elapse time [sec]:", time.time()-start_time)
 
