@@ -2,6 +2,9 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import scipy.sparse as sp
+from scipy.sparse.linalg import spsolve
+
 
 class FEM:
     def __init__(self, pnl, nx, ny, mesh_size, fix_nodes, F):
@@ -60,16 +63,31 @@ class FEM:
         self.rho = rho
         #print(self.node_coordinate_values)
 
-        K = self._Kmat()
+        #K = self._Kmat()
+        K_sp=self._Kmat_sp()
 
-        K_free = K[self.free_nodes].T[self.free_nodes].T
+        #a = np.where(K_sp.toarray() != K)
+        #print(type(K[a][0]))
+        #print(type(K_sp.toarray()[a][0]))
+
+        #np.savetxt('confirm_data/K_py.csv', K, delimiter=',')
+        #np.savetxt('confirm_data/Ksp_py.csv', K_sp.toarray(), delimiter=',')
+        #print(K.shape)
+        #print((K == 0).sum())
+        #K_free = K[self.free_nodes].T[self.free_nodes].T
+        K_free_sp = K_sp[self.free_nodes].transpose()[
+            self.free_nodes].transpose()
+
         U = np.zeros(self.all_vector_count)
-        U[self.free_nodes] = np.linalg.solve(K_free, self.F[self.free_nodes])
+        #U[self.free_nodes] = np.linalg.solve(K_free, self.F[self.free_nodes])
 
+        U[self.free_nodes] = spsolve(K_free_sp, sp.lil_matrix(
+            self.F[self.free_nodes]).tocsr().transpose())
         self.U = U
 
+        l=0
         # l: mean compliance = UtKU
-        l = (U.T @ K) @ U
+        #l = (U.T @ K_sp) @ U
         return U, l
 
     # stiffness matrix
@@ -78,7 +96,7 @@ class FEM:
         for y in tqdm(range(self.ny)):
             for x in range(self.nx):
                 Ke = self._Kemat(x, y)
-                #np.savetxt('confirm_data/Ke_py.csv', Ke, delimiter=',')
+                np.savetxt('confirm_data/Ke_py.csv', Ke, delimiter=',')
                 top1 = (self.ny+1)*x+y
                 top2 = (self.ny+1)*(x+1)+y
                 elem = [2*top1, 2*top1+1, 2*top2, 2*top2+1,
@@ -87,6 +105,32 @@ class FEM:
                     K[elem, one_elem] += Ke[index]
 
         return K
+
+    def _Kmat_sp(self):
+        row = np.array([])
+        col = np.array([])
+        data = np.array([])
+        for y in tqdm(range(self.ny)):
+            for x in range(self.nx):
+                Ke = self._Kemat(x, y)
+                top1 = (self.ny+1)*x+y
+                top2 = (self.ny+1)*(x+1)+y
+                elem = [2*top1, 2*top1+1, 2*top2, 2*top2+1,
+                        2*top2+2, 2*top2+3, 2*top1+2, 2*top1+3]
+                
+                #len(elem)といちいち参照するのは遅いのでハードコード
+                row_temp = np.array([[i]*8 for i in elem]).flatten()
+                col_temp = np.array(elem*len(elem))
+                data_temp = Ke.flatten()
+
+                row=np.r_[row, row_temp]
+                col=np.r_[col, col_temp]
+                data=np.r_[data, data_temp]
+                
+        K_sp = sp.coo_matrix((data, (row, col)), shape=(
+            self.all_vector_count, self.all_vector_count)).tocsr()
+
+        return K_sp
 
     # stiffness matrix of one element
     def _Kemat(self, x, y):
@@ -166,7 +210,7 @@ class FEM:
         plt.legend()
         plt.savefig('mesh_data/mesh.png')
         plt.show()
-    
+
     '''
     def _Bmat_matlab(self, dNdx, dNde):
         B = np.array([[dNdx[0],       0, dNdx[1],       0, dNdx[2],       0, dNdx[3],       0],
@@ -210,21 +254,21 @@ class FEM:
 
 def main():
     start_time = time.time()
-    nx = 50
-    ny = 50
+    nx = 100
+    ny = 100
 
     vol = 1
     pnl = 3
     mesh_size = 1
 
-    uniformly_distributed_F=10
+    uniformly_distributed_F = 10
 
     Fx = np.zeros((nx+1)*(ny+1))
     Fy = np.zeros((nx+1)*(ny+1))
 
     fix_x = list(range(ny+1))
     fix_y = [i for i in range(0, (nx+1)*(ny+1), ny+1)]
-    
+
     Fx[-(ny+1):] = uniformly_distributed_F
     Fx[-(ny+1)] *= 0.5
     Fx[-1] *= 0.5
@@ -249,7 +293,7 @@ def main():
     print("l:", l)
     print("elapse time [sec]:", time.time()-start_time)
 
-    fem_obj.tecplot()
+    #fem_obj.tecplot()
     fem_obj.plot_mesh()
 
 
