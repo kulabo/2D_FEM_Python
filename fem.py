@@ -64,22 +64,19 @@ class FEM:
         self.rho = rho
         K_sp=self._Kmat_sp()
 
-        #print(K.shape)
-        #print((K == 0).sum())
         K_free_sp = K_sp[self.free_nodes].transpose()[
             self.free_nodes].transpose()
 
         U = np.zeros(self.all_vector_count)
 
         U[self.free_nodes] = spsolve(K_free_sp, sp.lil_matrix(
-            self.F[self.free_nodes]).tocsr().transpose())
+            self.F[self.free_nodes]).tobsr().transpose())
 
 
         self.U = U
 
         U_sp = sp.lil_matrix(U).tocsr()
         # l: mean compliance = UtKU
-        #l = (U.T @ K_sp) @ U
         l = (U_sp @ K_sp) @ U_sp.transpose()
         return U, l
 
@@ -104,7 +101,6 @@ class FEM:
         col = []
         for y in tqdm(range(self.ny)):
             for x in range(self.nx):
-                #Ke = self._Kemat(x, y)
                 top1 = (self.ny+1)*x+y
                 top2 = (self.ny+1)*(x+1)+y
                 elem = [2*top1, 2*top1+1, 2*top2, 2*top2+1,
@@ -114,15 +110,9 @@ class FEM:
                 # Using "8" is hard-coded but fast.
                 row_temp = list(itertools.chain.from_iterable([[i]*8 for i in elem]))
                 col_temp = elem*len(elem)
-                #data_temp = list(Ke.flatten())
 
                 row.append(row_temp)
                 col.append(col_temp)
-                #data.append(data_temp)
-                
-                #row=np.r_[row, row_temp]
-                #col=np.r_[col, col_temp]
-                #data=np.r_[data, data_temp]
         
         data = [self._Kemat(x, y) for y in tqdm(range(self.ny))
                 for x in range(self.nx)]
@@ -145,10 +135,7 @@ class FEM:
             dNdxi = self._dNdxi(eta)
             dNdeta = self._dNdeta(xi)
             J = self._Jmat(x, y, dNdxi, dNdeta)
-            # B = self._Bmat_matlab(dNdxi, dNdeta)
             B = self._Bmat(J, dNdxi, dNdeta)
-            # B matrix calculated by matlab is not correspond with one by python
-            #   because of the difference of way of caluculate. 
             Ke += w*(B.T @ D) @ B*np.linalg.det(J)
         return Ke
 
@@ -211,25 +198,6 @@ class FEM:
         plt.savefig('mesh_data/mesh.png')
         plt.show()
 
-    '''
-    def _Bmat_matlab(self, dNdx, dNde):
-        B = np.array([[dNdx[0],       0, dNdx[1],       0, dNdx[2],       0, dNdx[3],       0],
-                      [0, dNde[0],       0, dNde[1],
-                          0, dNde[2],       0, dNde[3]],
-                      [dNde[0], dNdx[0], dNde[1], dNdx[1], dNde[2], dNdx[2], dNde[3], dNdx[3]]])
-        return B
-
-    # shape function matrix
-    def _Nmat(self, xi, eta):
-        N1 = 0.25*(1-xi)*(1-eta)
-        N2 = 0.25*(1+xi)*(1-eta)
-        N3 = 0.25*(1+xi)*(1+eta)
-        N4 = 0.25*(1-xi)*(1+eta)
-        N = np.array([[N1, 0, N2, 0, N3, 0, N4, 0],
-                      [0, N1, 0, N2, 0, N3, 0, N4]])
-        return N
-    '''
-
     def tecplot(self):
         plt_text_header = '''
         TITLE="Topology Optimization"
@@ -278,7 +246,6 @@ def main():
     fix_nodes = np.r_[2*fix_x, 2*fix_y+1]
 
     F = np.array([[x, y] for x, y in zip(Fx, Fy)]).flatten()
-    #print(F)
 
     #print("fix_nodes:", fix_nodes)
     #print("F:", F)
