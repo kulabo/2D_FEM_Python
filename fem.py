@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import scipy.sparse as sp
 from scipy.sparse.linalg import spsolve
-
+import itertools
 
 class FEM:
     def __init__(self, pnl, nx, ny, mesh_size, fix_nodes, F):
@@ -61,33 +61,25 @@ class FEM:
     # fenite element method
     def fem(self, rho):
         self.rho = rho
-        #print(self.node_coordinate_values)
-
-        #K = self._Kmat()
         K_sp=self._Kmat_sp()
 
-        #a = np.where(K_sp.toarray() != K)
-        #print(type(K[a][0]))
-        #print(type(K_sp.toarray()[a][0]))
-
-        #np.savetxt('confirm_data/K_py.csv', K, delimiter=',')
-        #np.savetxt('confirm_data/Ksp_py.csv', K_sp.toarray(), delimiter=',')
         #print(K.shape)
         #print((K == 0).sum())
-        #K_free = K[self.free_nodes].T[self.free_nodes].T
         K_free_sp = K_sp[self.free_nodes].transpose()[
             self.free_nodes].transpose()
 
         U = np.zeros(self.all_vector_count)
-        #U[self.free_nodes] = np.linalg.solve(K_free, self.F[self.free_nodes])
 
         U[self.free_nodes] = spsolve(K_free_sp, sp.lil_matrix(
             self.F[self.free_nodes]).tocsr().transpose())
+
+
         self.U = U
 
-        l=0
+        U_sp = sp.lil_matrix(U).tocsr()
         # l: mean compliance = UtKU
         #l = (U.T @ K_sp) @ U
+        l = (U_sp @ K_sp) @ U_sp.transpose()
         return U, l
 
     # stiffness matrix
@@ -107,27 +99,32 @@ class FEM:
         return K
 
     def _Kmat_sp(self):
-        row = np.array([])
-        col = np.array([])
-        data = np.array([])
+        row = []
+        col = []
         for y in tqdm(range(self.ny)):
             for x in range(self.nx):
-                Ke = self._Kemat(x, y)
+                #Ke = self._Kemat(x, y)
                 top1 = (self.ny+1)*x+y
                 top2 = (self.ny+1)*(x+1)+y
                 elem = [2*top1, 2*top1+1, 2*top2, 2*top2+1,
                         2*top2+2, 2*top2+3, 2*top1+2, 2*top1+3]
                 
                 #len(elem)といちいち参照するのは遅いのでハードコード
-                row_temp = np.array([[i]*8 for i in elem]).flatten()
-                col_temp = np.array(elem*len(elem))
-                data_temp = Ke.flatten()
+                row_temp = list(itertools.chain.from_iterable([[i]*8 for i in elem]))
+                col_temp = elem*len(elem)
+                #data_temp = list(Ke.flatten())
 
-                row=np.r_[row, row_temp]
-                col=np.r_[col, col_temp]
-                data=np.r_[data, data_temp]
+                row.append(row_temp)
+                col.append(col_temp)
+                #data.append(data_temp)
                 
-        K_sp = sp.coo_matrix((data, (row, col)), shape=(
+                #row=np.r_[row, row_temp]
+                #col=np.r_[col, col_temp]
+                #data=np.r_[data, data_temp]
+        
+        data = [self._Kemat(x, y) for y in tqdm(range(self.ny))
+                for x in range(self.nx)]
+        K_sp = sp.coo_matrix((np.array(data).flatten(), (np.array(row).flatten(), np.array(col).flatten())), shape=(
             self.all_vector_count, self.all_vector_count)).tocsr()
 
         return K_sp
@@ -254,8 +251,8 @@ class FEM:
 
 def main():
     start_time = time.time()
-    nx = 100
-    ny = 100
+    nx = 50
+    ny = 50
 
     vol = 1
     pnl = 3
@@ -294,7 +291,7 @@ def main():
     print("elapse time [sec]:", time.time()-start_time)
 
     #fem_obj.tecplot()
-    fem_obj.plot_mesh()
+    #fem_obj.plot_mesh()
 
 
 if __name__ == "__main__":
