@@ -48,11 +48,12 @@ class FEM:
                                [3 ** (-0.5),  3 ** (-0.5)],
                                [-3 ** (-0.5),  3 ** (-0.5)]])
         self.weight = np.array([1, 1, 1, 1])
-        # 本来は重みは2つ必要
+        # Maybe two weight (for double integration) are needed
+        #  but in this case, it is't necessary because they are 1.
 
         nu = 1/3
         # nu: poisson ratio
-        # 平面応力状態
+        # plane stress condition
         self._Cmat = np.array([[1, nu, 0],
                                [nu, 1, 0],
                                [0, 0, (1-nu)/2]]) / (1-nu ** 2)
@@ -109,7 +110,8 @@ class FEM:
                 elem = [2*top1, 2*top1+1, 2*top2, 2*top2+1,
                         2*top2+2, 2*top2+3, 2*top1+2, 2*top1+3]
                 
-                #len(elem)といちいち参照するのは遅いのでハードコード
+                # "len(elem)" is slow because it reffers elem each time.
+                # Using "8" is hard-coded but fast.
                 row_temp = list(itertools.chain.from_iterable([[i]*8 for i in elem]))
                 col_temp = elem*len(elem)
                 #data_temp = list(Ke.flatten())
@@ -145,7 +147,8 @@ class FEM:
             J = self._Jmat(x, y, dNdxi, dNdeta)
             # B = self._Bmat_matlab(dNdxi, dNdeta)
             B = self._Bmat(J, dNdxi, dNdeta)
-            # Bマトリクスは算出方法が違うので値は同じにならない
+            # B matrix calculated by matlab is not correspond with one by python
+            #   because of the difference of way of caluculate. 
             Ke += w*(B.T @ D) @ B*np.linalg.det(J)
         return Ke
 
