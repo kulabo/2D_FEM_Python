@@ -4,7 +4,9 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import scipy.sparse as sp
 from scipy.sparse.linalg import spsolve
+from scipy.sparse.linalg import cg
 import itertools
+import sys
 
 class FEM:
     def __init__(self, pnl, nx, ny, mesh_size, fix_nodes, F):
@@ -62,22 +64,46 @@ class FEM:
     # fenite element method
     def fem(self, rho):
         self.rho = rho
+        
+        #Ktime=time.time()        
         K_sp=self._Kmat_sp()
+        #plt.spy(K_sp)
+        #plt.savefig('confirm_data/K_sp.png')
+        K = self._Kmat()
+        #print("K time [sec]:", time.time()-Ktime)
+        
+        print("K size:",K.nbytes)
+        print("K sparse size:", K_sp.data.nbytes+K_sp.indices.nbytes+K_sp.indptr.nbytes)
+        print(K_sp.data.nbytes, K_sp.indices.nbytes,K_sp.indptr.nbytes)
+        
+        #print(len(K_sp.indices))
+        #print(len(K_sp.indptr))
+        #print("K size:",sys.getsizeof(K))
+        #print("K sparse size:", sys.getsizeof(K_sp))
+        #sp.save_npz("confirm_data/Kspsavez.npz", K_sp)
+        #np.savez("confirm_data/Kspsavez", K_sp)
+        #print((K != 0).sum(),np.array(K.shape).prod())
+        #print((K != 0).sum()/np.array(K.shape).prod())
 
-        K_free_sp = K_sp[self.free_nodes].transpose()[
-            self.free_nodes].transpose()
-
+        K_free_sp = K_sp[self.free_nodes].T[
+            self.free_nodes].T
+        
         U = np.zeros(self.all_vector_count)
-
+        solve_time=time.time()
+        #U[self.free_nodes] = spsolve(K_free_sp, sp.lil_matrix(
+        #    self.F[self.free_nodes]).tobsr().T, use_umfpack=True)
+        print(K_free_sp.shape)
+        print(sp.lil_matrix(
+            self.F[self.free_nodes]).tobsr().T.shape)
         U[self.free_nodes] = spsolve(K_free_sp, sp.lil_matrix(
-            self.F[self.free_nodes]).tobsr().transpose())
-
+            self.F[self.free_nodes]).tobsr().T)
+        print("solve time [sec]:", time.time()-solve_time)
 
         self.U = U
 
         U_sp = sp.lil_matrix(U).tocsr()
         # l: mean compliance = UtKU
-        l = (U_sp @ K_sp) @ U_sp.transpose()
+        l = (U_sp @ K_sp) @ U_sp.T
         return U, l
 
     # stiffness matrix
