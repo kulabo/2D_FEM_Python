@@ -187,6 +187,8 @@ N_4
 \end{array} \right)
 $$
 
+<img src="https://latex.codecogs.com/gif.latex?\ \frac{\partial N_1}{\partial \xi}=-\frac{1-\eta}{4} ,\;\;\frac{\partial N_2}{\partial \xi}=\frac{1-\eta}{4} ,\;\;" />
+
 $$
 \frac{\partial N_1}{\partial \xi}=-\frac{1-\eta}{4} ,\;\;
 \frac{\partial N_2}{\partial \xi}=\frac{1-\eta}{4} ,\;\;
@@ -223,3 +225,10 @@ D=\frac{E}{(1+\nu)(1-2\nu)}
 0 & 0 & \frac{1-2\nu}{2} 
 \end{array} \right)
 $$
+
+## 3.実装
+### 概要
+本プログラムはトポロジー最適化という設計最適化手法のためのFEMとして設計した関係から、拘束条件や荷重条件、解析領域が変化せず、各要素のヤング率だけが変化するような繰り返しの解析がしやすくなっている。
+FEMをクラスとして実装し、コンストラクタに荷重条件などの変化しない値を渡し、そのインスタンスの持つ計算メソッドに変化するヤング率(実際には無次元密度)を渡してループさせて最適化を行なう。
+
+まずは大まかにFEMクラス
