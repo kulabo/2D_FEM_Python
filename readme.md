@@ -12,6 +12,12 @@ cd 2D_FEM_Python
 pip install -r requirements.txt
 ```
 
+`.ipynb`ファイルの閲覧には別途Jupyterが必要になりますので、その場合は
+```
+pip install jupyter
+```
+も実行してください。
+
 ## Usage
 
 ```
