@@ -194,7 +194,6 @@ class FEM:
                        self.U[::2], self.U[1::2],
                        self.F[::2], self.F[1::2],
                        ]
-            #print(content)
             np.savetxt(plt_file, content, delimiter='\n')
             np.savetxt(plt_file, self.rho.flatten(), delimiter='\n')
             np.savetxt(plt_file, self.node_connection,
@@ -233,7 +232,6 @@ def main():
     fem_obj = FEM(nx, ny, mesh_size, fix_nodes, F)
     U = fem_obj.fem()
 
-    print("U:", U)
     print("elapse time [sec]:", time.time()-start_time)
 
     #fem_obj.tecplot()
