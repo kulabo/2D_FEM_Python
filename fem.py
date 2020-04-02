@@ -2,20 +2,21 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+import scipy.sparse as sp
+from scipy.sparse.linalg import spsolve
+from scipy.sparse.linalg import cg
+import itertools
+import sys
 
 class FEM:
-    def __init__(self, pnl, nx, ny, mesh_size, fix_nodes, F):
-        # self.rho = rho
-        self.pnl = pnl
+    def __init__(self, nx, ny, mesh_size, fix_nodes, F):
         self.nx = nx
         self.ny = ny
         self.mesh_size = mesh_size
         self.fix_nodes = fix_nodes
         self.F = F
 
-        #self.E0 = 2.1*(10**8)
         self.E0 = 100
-        self.Emin = 1e-3
 
         self.all_element_count = nx*ny
         self.all_node_count = (nx+1)*(ny+1)
@@ -45,32 +46,32 @@ class FEM:
                                [3 ** (-0.5),  3 ** (-0.5)],
                                [-3 ** (-0.5),  3 ** (-0.5)]])
         self.weight = np.array([1, 1, 1, 1])
-        # 本来は重みは2つ必要
+        # Maybe two weight (for double integration) are needed
+        #  but in this case, it is't necessary because they are 1.
 
         nu = 1/3
         # nu: poisson ratio
-        # 平面応力状態
-        self._Cmat = np.array([[1, nu, 0],
+        # plane stress condition
+        self._Dmat = self.E0 * np.array([[1, nu, 0],
                                [nu, 1, 0],
                                [0, 0, (1-nu)/2]]) / (1-nu ** 2)
-        # Dmat=E*Cmat
 
     # fenite element method
-    def fem(self, rho):
-        self.rho = rho
-        #print(self.node_coordinate_values)
+    def fem(self):
+        K_sp=self._Kmat_sp()
 
-        K = self._Kmat()
-
-        K_free = K[self.free_nodes].T[self.free_nodes].T
+        K_free_sp = K_sp[self.free_nodes].T[
+            self.free_nodes].T
+        
         U = np.zeros(self.all_vector_count)
-        U[self.free_nodes] = np.linalg.solve(K_free, self.F[self.free_nodes])
+        solve_time=time.time()
+
+        U[self.free_nodes] = spsolve(K_free_sp, sp.lil_matrix(
+            self.F[self.free_nodes]).tobsr().T)
+        print("solve time [sec]:", time.time()-solve_time)
 
         self.U = U
-
-        # l: mean compliance = UtKU
-        l = (U.T @ K) @ U
-        return U, l
+        return U
 
     # stiffness matrix
     def _Kmat(self):
@@ -78,7 +79,6 @@ class FEM:
         for y in tqdm(range(self.ny)):
             for x in range(self.nx):
                 Ke = self._Kemat(x, y)
-                #np.savetxt('confirm_data/Ke_py.csv', Ke, delimiter=',')
                 top1 = (self.ny+1)*x+y
                 top2 = (self.ny+1)*(x+1)+y
                 elem = [2*top1, 2*top1+1, 2*top2, 2*top2+1,
@@ -88,13 +88,34 @@ class FEM:
 
         return K
 
+    def _Kmat_sp(self):
+        row = []
+        col = []
+        for y in tqdm(range(self.ny)):
+            for x in range(self.nx):
+                top1 = (self.ny+1)*x+y
+                top2 = (self.ny+1)*(x+1)+y
+                elem = [2*top1, 2*top1+1, 2*top2, 2*top2+1,
+                        2*top2+2, 2*top2+3, 2*top1+2, 2*top1+3]
+                
+                # "len(elem)" is slow because it reffers elem each time.
+                # Using "8" is hard-coded but fast.
+                row_temp = list(itertools.chain.from_iterable([[i]*8 for i in elem]))
+                col_temp = elem*len(elem)
+
+                row.append(row_temp)
+                col.append(col_temp)
+        
+        data = [self._Kemat(x, y) for y in tqdm(range(self.ny))
+                for x in range(self.nx)]
+        K_sp = sp.coo_matrix((np.array(data).flatten(), (np.array(row).flatten(), np.array(col).flatten())), shape=(
+            self.all_vector_count, self.all_vector_count)).tocsr()
+
+        return K_sp
+
     # stiffness matrix of one element
     def _Kemat(self, x, y):
-        elem_rho = self.rho[x, y]
         Ke = np.zeros((8, 8))
-
-        E = (self.E0-self.Emin)*elem_rho ** self.pnl+self.Emin
-        D = E*self._Cmat
 
         for n in range(4):
             xi, eta = self.point[n]
@@ -102,10 +123,8 @@ class FEM:
             dNdxi = self._dNdxi(eta)
             dNdeta = self._dNdeta(xi)
             J = self._Jmat(x, y, dNdxi, dNdeta)
-            # B = self._Bmat_matlab(dNdxi, dNdeta)
             B = self._Bmat(J, dNdxi, dNdeta)
-            # Bマトリクスは算出方法が違うので値は同じにならない
-            Ke += w*(B.T @ D) @ B*np.linalg.det(J)
+            Ke += w*(B.T @ self._Dmat) @ B*np.linalg.det(J)
         return Ke
 
     def _Jmat(self, x, y, dNdxi, dNdeta):
@@ -152,39 +171,12 @@ class FEM:
         x_list = [row[0] for row in self.node_coordinate_values]
         y_list = [row[1] for row in self.node_coordinate_values]
 
-        #plt.fill(x_list, y_list, c="r",alpha=0.5)
         plt.scatter(x_list, y_list, c="r", alpha=0.5, label="initial")
-        #plt.plot(x_list, y_list)
-
-        #plt.fill(x_list+self.U[::2], y_list+self.U[1::2], c="b", alpha=0.5)
         plt.scatter(x_list+self.U[::2], y_list +
                     self.U[1::2], c="b", alpha=0.5, label="transformed")
-        #plt.axes().set_aspect('equal', 'datalim')
-
-        #plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left',
-        #           borderaxespad=0, fontsize=18)
         plt.legend()
         plt.savefig('mesh_data/mesh.png')
         plt.show()
-    
-    '''
-    def _Bmat_matlab(self, dNdx, dNde):
-        B = np.array([[dNdx[0],       0, dNdx[1],       0, dNdx[2],       0, dNdx[3],       0],
-                      [0, dNde[0],       0, dNde[1],
-                          0, dNde[2],       0, dNde[3]],
-                      [dNde[0], dNdx[0], dNde[1], dNdx[1], dNde[2], dNdx[2], dNde[3], dNdx[3]]])
-        return B
-
-    # shape function matrix
-    def _Nmat(self, xi, eta):
-        N1 = 0.25*(1-xi)*(1-eta)
-        N2 = 0.25*(1+xi)*(1-eta)
-        N3 = 0.25*(1+xi)*(1+eta)
-        N4 = 0.25*(1-xi)*(1+eta)
-        N = np.array([[N1, 0, N2, 0, N3, 0, N4, 0],
-                      [0, N1, 0, N2, 0, N3, 0, N4]])
-        return N
-    '''
 
     def tecplot(self):
         plt_text_header = '''
@@ -213,18 +205,16 @@ def main():
     nx = 50
     ny = 50
 
-    vol = 1
-    pnl = 3
     mesh_size = 1
 
-    uniformly_distributed_F=10
+    uniformly_distributed_F = 10
 
     Fx = np.zeros((nx+1)*(ny+1))
     Fy = np.zeros((nx+1)*(ny+1))
 
     fix_x = list(range(ny+1))
     fix_y = [i for i in range(0, (nx+1)*(ny+1), ny+1)]
-    
+
     Fx[-(ny+1):] = uniformly_distributed_F
     Fx[-(ny+1)] *= 0.5
     Fx[-1] *= 0.5
@@ -234,22 +224,14 @@ def main():
     fix_nodes = np.r_[2*fix_x, 2*fix_y+1]
 
     F = np.array([[x, y] for x, y in zip(Fx, Fy)]).flatten()
-    #print(F)
 
-    #print("fix_nodes:", fix_nodes)
-    #print("F:", F)
-
-    rho = vol*np.ones([nx, ny])
-    # rho = np.random.rand(nx,ny)
-
-    fem_obj = FEM(pnl, nx, ny, mesh_size, fix_nodes, F)
-    U, l = fem_obj.fem(rho)
+    fem_obj = FEM(nx, ny, mesh_size, fix_nodes, F)
+    U = fem_obj.fem()
 
     print("U:", U)
-    print("l:", l)
     print("elapse time [sec]:", time.time()-start_time)
 
-    fem_obj.tecplot()
+    #fem_obj.tecplot()
     fem_obj.plot_mesh()
 
 

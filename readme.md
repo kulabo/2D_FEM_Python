@@ -1,5 +1,12 @@
 # Pythonで作る2次元変位解析FEM
-## 定式化
+## 1.はじめに
+### 1.1 Pythonとは
+Pythonは、いわゆるLL(Lightweight Language)のひとつである。ここでのLightweightというのは、動作が軽量という意味ではなく、習得・学習・使用が容易(軽量)であるということから付けられている。Pythonはその学習のしやすさ、それに伴うユーザーの多さ、パッケージの豊富さから、近年のAIブームにおける使用言語のデファクトスタンダードとなっている。もしあなたが今Pythonを使ったことがなかったとしても、これを機にPythonを始めてみることをおすすめする。
+
+### 1.2 有限要素法とは
+有限要素法(FEM : Fenite Element Method)とは、解析したい物や場を細かい要素に区切り、その細かい要素について計算した結果を重ね合わせて全体を求める手法である。流れ場の解析や構造物の応力解析などに広く使われる手法である。本レポートでは、2次元の構造物を対象とした応力解析問題について有限要素法を用いる。
+
+## 2.定式化
 弾性体の支配方程式は、いわゆるフックの法則である以下の式で表される。
 $$
 F=KU
@@ -20,7 +27,7 @@ $$
 K_e=\iint_{\Omega_e} B^TDBdet(J)d\Omega_e
 $$
 
-また、ガウス・ルジャンドル求積により、
+一般に積分をプログラム上で行うことは困難であるから、数値積分によって計算し易い形式に近似する。数値積分法の1つであるガウス・ルジャンドル求積を適用して、
 $$
 K_e=\sum_{i=1}^4 \sum_{j=1}^4 \omega_i \omega_j B^T(\xi_{i,j},\eta_{i,j})DB(\xi_{i,j},\eta_{i,j})det(J(\xi_{i,j},\eta_{i,j}))
 $$
@@ -35,14 +42,9 @@ $$
 (\pm \frac{1}{\sqrt 3},\mp \frac{1}{\sqrt 3})
 $$
 
-また$B$マトリクスは以下のように表される。
-
-$$
-B=\left( \begin{array}{}
-B_1 & B_2 & B_3 & B_4 
-\end{array} \right)
-$$
-
+となる。$(\xi_{i,j},\eta_{i,j})$はガウス・ルジャンドル求積の積分点の正規化座標での座標値である。
+今、上式においての未知数は$B$、$D$、$J$である。それらの具体形を以下に示す。
+ひずみ$\epsilon$は以下のように表される。
 $$
 \epsilon=\left( \begin{array}{} 
 \epsilon_x \\
@@ -66,13 +68,11 @@ v
 \end{array} \right)
 =Au
 $$
+また$B$マトリクスは上記の$A$を用いて以下のように表される。
 
 $$
-D=\frac{E}{1-\mu^2}
-\left( \begin{array}{}
-1 & \mu & 0\\ 
-\mu & 1 & 0 \\
-0 & 0 & \frac{1-\mu}{2} 
+B=\left( \begin{array}{}
+B_1 & B_2 & B_3 & B_4 
 \end{array} \right)
 $$
 
@@ -94,6 +94,11 @@ N_n & 0 \\
 $$
 
 $$
+(n=1,2,3,4)
+$$
+
+ここで、$B_n$の成分は偏微分の連鎖則から以下のように表される。
+$$
 \frac{\partial N_n}{\partial \xi}=
 \frac{\partial x}{\partial \xi} \frac{\partial N_n}{\partial x}+
 \frac{\partial y}{\partial \xi} \frac{\partial N_n}{\partial y}
@@ -105,7 +110,7 @@ $$
 \frac{\partial y}{\partial \eta} \frac{\partial N_n}{\partial y}
 $$
 
-より、
+以上の関係を行列形式で表せば、
 
 $$
 \left( \begin{array}{}
@@ -126,6 +131,8 @@ J
 \frac{\partial N_n}{\partial \eta} 
 \end{array} \right)
 $$
+
+となる。ここで$J$はヤコビマトリクスである。
 
 $$
 x = \sum_{n=1}^4 N_n x_n ,\;\;
@@ -180,6 +187,8 @@ N_4
 \end{array} \right)
 $$
 
+<img src="https://latex.codecogs.com/gif.latex?\ \frac{\partial N_1}{\partial \xi}=-\frac{1-\eta}{4} ,\;\;\frac{\partial N_2}{\partial \xi}=\frac{1-\eta}{4} ,\;\;" />
+
 $$
 \frac{\partial N_1}{\partial \xi}=-\frac{1-\eta}{4} ,\;\;
 \frac{\partial N_2}{\partial \xi}=\frac{1-\eta}{4} ,\;\;
@@ -193,3 +202,33 @@ $$
 \frac{\partial N_3}{\partial \eta}=\frac{1+\xi}{4} ,\;\;
 \frac{\partial N_4}{\partial \eta}=\frac{1-\xi}{4}
 $$
+
+$D$マトリクスは以下である。これは平面応力状態を仮定した際の式である。平面応力状態は薄い平板が面方向に荷重を受ける状態であり、板に垂直方向($z$方向)の応力を0とみなす仮定である。
+
+$$
+D=\frac{E}{1-\nu^2}
+\left( \begin{array}{}
+1 & \nu & 0\\ 
+\nu & 1 & 0 \\
+0 & 0 & \frac{1-\nu}{2} 
+\end{array} \right)
+$$
+
+$E$はヤング率、$\nu$はポアソン比である。
+参考として、平面ひずみ状態での$D$マトリクスを以下に示す。平面ひずみ状態では、$z$方向を非常に長いと仮定して**$z$方向のひずみ**を0とみなす。
+
+$$
+D=\frac{E}{(1+\nu)(1-2\nu)}
+\left( \begin{array}{}
+1-\nu & \nu & 0\\ 
+\nu & 1-\nu & 0 \\
+0 & 0 & \frac{1-2\nu}{2} 
+\end{array} \right)
+$$
+
+## 3.実装
+### 概要
+本プログラムはトポロジー最適化という設計最適化手法のためのFEMとして設計した関係から、拘束条件や荷重条件、解析領域が変化せず、各要素のヤング率だけが変化するような繰り返しの解析がしやすくなっている。
+FEMをクラスとして実装し、コンストラクタに荷重条件などの変化しない値を渡し、そのインスタンスの持つ計算メソッドに変化するヤング率(実際には無次元密度)を渡してループさせて最適化を行なう。
+
+まずは大まかにFEMクラス
