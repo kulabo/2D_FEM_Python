@@ -2,6 +2,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from pathlib import Path
 import scipy.sparse as sp
 from scipy.sparse.linalg import spsolve
 from scipy.sparse.linalg import cg
@@ -201,6 +202,10 @@ class FEM:
 
 
 def main():
+    out_mesh_data_dir=Path("mesh_data")
+    if not(out_mesh_data_dir.exists()):
+        out_mesh_data_dir.mkdir()
+    
     start_time = time.time()
     nx = 50
     ny = 50
