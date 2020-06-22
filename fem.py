@@ -4,8 +4,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from pathlib import Path
 import scipy.sparse as sp
-from scipy.sparse.linalg import spsolve
-from scipy.sparse.linalg import cg
+from scipy.sparse.linalg import spsolve, cg
 import itertools
 import sys
 
@@ -69,10 +68,9 @@ class FEM:
 
         U[self.free_nodes] = spsolve(K_free_sp, sp.lil_matrix(
             self.F[self.free_nodes]).tobsr().T)
-        print("solve time [sec]:", time.time()-solve_time)
+        print(f"solve time {time.time()-solve_time:.3f} [sec]")
 
         self.U = U
-        return U
 
     # stiffness matrix
     def _Kmat(self):
@@ -130,7 +128,7 @@ class FEM:
 
     def _Jmat(self, x, y, dNdxi, dNdeta):
         '''
-        node numbers for each elements
+        node numbering for each element
         4 --- 3
         |     |
         |     |
@@ -193,8 +191,8 @@ class FEM:
 
     def tecplot(self):
         plt_text_header = '''
-        TITLE="Topology Optimization"
-        VARIABLES = "X", "Y", "UX", "UY", "FX", "FY", "rho"
+        TITLE="2D displacement analysis by finite element method"
+        VARIABLES = "X", "Y", "UX", "UY", "FX", "FY"
         ZONE N ={0},E ={1}, DATAPACKING=BLOCK, ZONETYPE=FEQUADRILATERAL, VARLOCATION=([7]=CELLCENTERED)
         '''.format(self.all_node_count, self.all_element_count)
         x_list = [row[0] for row in self.node_coordinate_values]
@@ -207,44 +205,44 @@ class FEM:
                        self.F[::2], self.F[1::2],
                        ]
             np.savetxt(plt_file, content, delimiter='\n')
-            np.savetxt(plt_file, self.rho.flatten(), delimiter='\n')
             np.savetxt(plt_file, self.node_connection,
                        fmt="%.0f", delimiter=',')
 
 
 def main():
+    # define number of elements for x, y axes
+    nx = 50
+    ny = 50
+
+    # initialize
+    Fx = np.zeros((nx+1)*(ny+1))
+    Fy = np.zeros((nx+1)*(ny+1))
+    fix_x = np.arange(ny+1)
+    fix_y = np.arange(0, (nx+1)*(ny+1), ny+1)
+
     out_mesh_data_dir=Path("mesh_data")
     if not(out_mesh_data_dir.exists()):
         out_mesh_data_dir.mkdir()
     
     start_time = time.time()
-    nx = 50
-    ny = 50
 
+    # define boundary  conditions
     mesh_size = 1
-
     uniformly_distributed_F = 20
-
-    Fx = np.zeros((nx+1)*(ny+1))
-    Fy = np.zeros((nx+1)*(ny+1))
-
-    fix_x = list(range(ny+1))
-    fix_y = [i for i in range(0, (nx+1)*(ny+1), ny+1)]
 
     Fx[-(ny+1):] = uniformly_distributed_F
     Fx[-(ny+1)] *= 0.5
     Fx[-1] *= 0.5
 
-    fix_x = np.array(fix_x)
-    fix_y = np.array(fix_y)
     fix_nodes = np.r_[2*fix_x, 2*fix_y+1]
 
-    F = np.array([[x, y] for x, y in zip(Fx, Fy)]).flatten()
+    F=np.insert(Fy,range((nx+1)*(ny+1)),Fx)
+    #F = np.array([[x, y] for x, y in zip(Fx, Fy)]).flatten()
 
     fem_obj = FEM(nx, ny, mesh_size, fix_nodes, F)
-    U = fem_obj.fem()
+    fem_obj.fem()
 
-    print("elapse time [sec]:", time.time()-start_time)
+    print(f"elapse time {time.time()-start_time:.3f} [sec]")
 
     #fem_obj.tecplot()
     fem_obj.plot_mesh()
