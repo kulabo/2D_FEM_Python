@@ -8,14 +8,14 @@ from scipy.sparse.linalg import spsolve, cg
 import itertools
 
 class FEM:
-    def __init__(self, nx, ny, mesh_size, fix_nodes, F):
+    def __init__(self, nx, ny, mesh_size, fix_nodes, F, E0, nu):
         self.nx = nx
         self.ny = ny
         self.mesh_size = mesh_size
         self.fix_nodes = fix_nodes
         self.F = F
 
-        self.E0 = 100
+        self.E0 = E0
 
         self.all_element_count = nx*ny
         self.all_node_count = (nx+1)*(ny+1)
@@ -42,7 +42,6 @@ class FEM:
         # Maybe two weights (for double integration) are needed.
         # But in this case, it is't necessary because all of them are 1.
 
-        nu = 1/3
         # nu: poisson ratio
         # plane stress condition
         self._Dmat = self.E0 * np.array([[1, nu, 0],
@@ -170,6 +169,8 @@ class FEM:
                     self.U[1::2], c="b", alpha=0.5, label="transformed")
         ax.set_aspect('equal', 'datalim')
         ax.legend()
+        ax.set_xlabel("x [m]")
+        ax.set_ylabel("y [m]")
         plt.savefig('mesh_data/mesh.png')
         plt.show()
 
@@ -194,6 +195,8 @@ class FEM:
 
 def main():
     # define material properties
+    E0=100
+    nu = 1/3
 
     # define mesh
     nx = 50
@@ -212,8 +215,6 @@ def main():
 
     # define boundary  conditions
     Fx[-(ny+1):] = 20
-    Fx[-(ny+1)] *= 0.5
-    Fx[-1] *= 0.5
 
     fix_x = np.arange(ny+1)
     fix_y = np.arange(0, (nx+1)*(ny+1), ny+1)
@@ -222,7 +223,7 @@ def main():
     fix_nodes = np.r_[2*fix_x, 2*fix_y+1]
     F=np.insert(Fy,range((nx+1)*(ny+1)),Fx)
 
-    fem_obj = FEM(nx, ny, mesh_size, fix_nodes, F)
+    fem_obj = FEM(nx, ny, mesh_size, fix_nodes, F, E0, nu)
     fem_obj.fem()
 
     print(f"elapse time {time.time()-start_time:.3f} [sec]")
