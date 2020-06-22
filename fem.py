@@ -171,10 +171,22 @@ class FEM:
     def plot_mesh(self):
         x_list = [row[0] for row in self.node_coordinate_values]
         y_list = [row[1] for row in self.node_coordinate_values]
+        #plt.fill(x_list, y_list, c="r",alpha=0.5)
+        #plt.plot(x_list, y_list)
+        '''
+        plt.scatter(x_list, y_list, c="r", alpha=0.5, label="initial")
+        #plt.fill(x_list+self.U[::2], y_list+self.U[1::2], c="b", alpha=0.5)
+        plt.scatter(x_list+self.U[::2], y_list +
+                    self.U[1::2], c="b", alpha=0.5, label="transformed")
+        
+        '''
+        #plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left',
+        #           borderaxespad=0, fontsize=18)
 
         plt.scatter(x_list, y_list, c="r", alpha=0.5, label="initial")
         plt.scatter(x_list+self.U[::2], y_list +
                     self.U[1::2], c="b", alpha=0.5, label="transformed")
+        plt.axes().set_aspect('equal', 'datalim')
         plt.legend()
         plt.savefig('mesh_data/mesh.png')
         plt.show()
@@ -211,7 +223,7 @@ def main():
 
     mesh_size = 1
 
-    uniformly_distributed_F = 10
+    uniformly_distributed_F = 20
 
     Fx = np.zeros((nx+1)*(ny+1))
     Fy = np.zeros((nx+1)*(ny+1))
