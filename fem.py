@@ -6,7 +6,6 @@ from pathlib import Path
 import scipy.sparse as sp
 from scipy.sparse.linalg import spsolve, cg
 import itertools
-import sys
 
 class FEM:
     def __init__(self, nx, ny, mesh_size, fix_nodes, F):
@@ -31,13 +30,7 @@ class FEM:
         # start from 1
         # [[elem1node1,elem1node2,elem1node3,elem1node4],
         #  [elem2node1,elem2node2,elem2node3,elem2node4],...]
-        '''
-        node numbers for each elements
-        4 --- 3
-        |     |
-        |     |
-        1 --- 2
-        '''
+
         self.node_connection = np.array(
             [[(i+(nx+1)*j), (i+(nx+1)*j)+1, (i+(nx+1)*j)+nx+2, (i+(nx+1)*j)+nx+1] for i in range(1, nx+1) for j in range(ny)])
 
@@ -46,8 +39,8 @@ class FEM:
                                [3 ** (-0.5),  3 ** (-0.5)],
                                [-3 ** (-0.5),  3 ** (-0.5)]])
         self.weight = np.array([1, 1, 1, 1])
-        # Maybe two weight (for double integration) are needed
-        #  but in this case, it is't necessary because they are 1.
+        # Maybe two weights (for double integration) are needed.
+        # But in this case, it is't necessary because all of them are 1.
 
         nu = 1/3
         # nu: poisson ratio
@@ -167,25 +160,16 @@ class FEM:
         return B
 
     def plot_mesh(self):
-        x_list = [row[0] for row in self.node_coordinate_values]
-        y_list = [row[1] for row in self.node_coordinate_values]
-        #plt.fill(x_list, y_list, c="r",alpha=0.5)
-        #plt.plot(x_list, y_list)
-        '''
-        plt.scatter(x_list, y_list, c="r", alpha=0.5, label="initial")
-        #plt.fill(x_list+self.U[::2], y_list+self.U[1::2], c="b", alpha=0.5)
-        plt.scatter(x_list+self.U[::2], y_list +
-                    self.U[1::2], c="b", alpha=0.5, label="transformed")
-        
-        '''
-        #plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left',
-        #           borderaxespad=0, fontsize=18)
+        x_list, y_list = self.node_coordinate_values.T
 
-        plt.scatter(x_list, y_list, c="r", alpha=0.5, label="initial")
-        plt.scatter(x_list+self.U[::2], y_list +
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        ax.scatter(x_list, y_list, c="r", alpha=0.5, label="initial")
+        ax.scatter(x_list+self.U[::2], y_list +
                     self.U[1::2], c="b", alpha=0.5, label="transformed")
-        plt.axes().set_aspect('equal', 'datalim')
-        plt.legend()
+        ax.set_aspect('equal', 'datalim')
+        ax.legend()
         plt.savefig('mesh_data/mesh.png')
         plt.show()
 
@@ -195,8 +179,8 @@ class FEM:
         VARIABLES = "X", "Y", "UX", "UY", "FX", "FY"
         ZONE N ={0},E ={1}, DATAPACKING=BLOCK, ZONETYPE=FEQUADRILATERAL, VARLOCATION=([7]=CELLCENTERED)
         '''.format(self.all_node_count, self.all_element_count)
-        x_list = [row[0] for row in self.node_coordinate_values]
-        y_list = [row[1] for row in self.node_coordinate_values]
+
+        x_list, y_list = self.node_coordinate_values.T
 
         with open("mesh_data/mesh.plt", "w") as plt_file:
             plt_file.write(plt_text_header)
@@ -208,17 +192,17 @@ class FEM:
             np.savetxt(plt_file, self.node_connection,
                        fmt="%.0f", delimiter=',')
 
-
 def main():
-    # define number of elements for x, y axes
+    # define material properties
+
+    # define mesh
     nx = 50
     ny = 50
+    mesh_size = 1
 
     # initialize
     Fx = np.zeros((nx+1)*(ny+1))
     Fy = np.zeros((nx+1)*(ny+1))
-    fix_x = np.arange(ny+1)
-    fix_y = np.arange(0, (nx+1)*(ny+1), ny+1)
 
     out_mesh_data_dir=Path("mesh_data")
     if not(out_mesh_data_dir.exists()):
@@ -227,17 +211,16 @@ def main():
     start_time = time.time()
 
     # define boundary  conditions
-    mesh_size = 1
-    uniformly_distributed_F = 20
-
-    Fx[-(ny+1):] = uniformly_distributed_F
+    Fx[-(ny+1):] = 20
     Fx[-(ny+1)] *= 0.5
     Fx[-1] *= 0.5
 
-    fix_nodes = np.r_[2*fix_x, 2*fix_y+1]
+    fix_x = np.arange(ny+1)
+    fix_y = np.arange(0, (nx+1)*(ny+1), ny+1)
 
+    # excute analysis
+    fix_nodes = np.r_[2*fix_x, 2*fix_y+1]
     F=np.insert(Fy,range((nx+1)*(ny+1)),Fx)
-    #F = np.array([[x, y] for x, y in zip(Fx, Fy)]).flatten()
 
     fem_obj = FEM(nx, ny, mesh_size, fix_nodes, F)
     fem_obj.fem()
