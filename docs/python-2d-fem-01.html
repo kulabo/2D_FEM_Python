@@ -13319,6 +13319,7 @@ $$
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>FEMクラス内のfemの計算メソッドは以下である。</p>
 <div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">FEM</span><span class="p">:</span>
+    <span class="c1"># 略</span>
     <span class="k">def</span> <span class="nf">fem</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="n">K_sp</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_Kmat_sp</span><span class="p">()</span>
 
@@ -13334,6 +13335,33 @@ $$
 
         <span class="bp">self</span><span class="o">.</span><span class="n">U</span> <span class="o">=</span> <span class="n">U</span>
 </pre></div>
+<p>疎行列で計算をしているためやや複雑に見えるが、本質としてはKを定義してF=KUを解いてUを求めているだけである。
+K_spに全体の剛性マトリクスを定義し、与えられた外力FについてF=KUをspsolveで解いている。なお拘束されている点では変位が0であるため、拘束されていない点をfree_nodesで指定して、対応するノードについてのみ計算している。</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>剛性マトリクスKを求めるメソッドを定式化の通り定義していく。Kは各要素の剛性マトリクスKeの重ね合わせで表現される。疎行列で実装したものは_Kmat_spというメソッドで、計算にはこちらを使用しているが、説明のため疎行列で実装していないメソッド_Kmatを見ていく。実装は以下のようになっている。</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">FEM</span><span class="p">:</span>
+    <span class="c1"># 略</span>
+    <span class="k">def</span> <span class="nf">_Kmat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">all_vector_count</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">all_vector_count</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ny</span><span class="p">)):</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nx</span><span class="p">):</span>
+                <span class="n">Ke</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Kemat</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+                <span class="n">top1</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ny</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="n">x</span><span class="o">+</span><span class="n">y</span>
+                <span class="n">top2</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ny</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">x</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="n">y</span>
+                <span class="n">elem</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="o">*</span><span class="n">top1</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">top1</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">top2</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">top2</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span>
+                        <span class="mi">2</span><span class="o">*</span><span class="n">top2</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">top2</span><span class="o">+</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">top1</span><span class="o">+</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span class="n">top1</span><span class="o">+</span><span class="mi">3</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">one_elem</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">elem</span><span class="p">):</span>
+                    <span class="n">K</span><span class="p">[</span><span class="n">elem</span><span class="p">,</span> <span class="n">one_elem</span><span class="p">]</span> <span class="o">+=</span> <span class="n">Ke</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">K</span>
+</pre></div>
+<p>ある(x,y)番目の要素についての剛性マトリクスKeを求め、全体の剛性マトリクスKについて足し合わせる、という計算を、2重のforループで全要素にわたって行っていることがわかる。疎行列で実装したものについてもほぼ同様の計算をしている。</p>
 
 </div>
 </div>
