@@ -213,12 +213,6 @@ def main():
     Fx = np.zeros((nx+1)*(ny+1))
     Fy = np.zeros((nx+1)*(ny+1))
 
-    out_mesh_data_dir=Path("mesh_data")
-    if not(out_mesh_data_dir.exists()):
-        out_mesh_data_dir.mkdir()
-    
-    start_time = time.time()
-
     # define boundary  conditions
     Fx[-(ny+1):] = 20
 
@@ -226,6 +220,11 @@ def main():
     fix_y = np.arange(0, (nx+1)*(ny+1), ny+1)
 
     # excute analysis
+    out_mesh_data_dir=Path("mesh_data")
+    if not(out_mesh_data_dir.exists()):
+        out_mesh_data_dir.mkdir()
+    
+    start_time = time.time()
     fix_nodes = np.r_[2*fix_x, 2*fix_y+1]
     F=np.insert(Fy,range((nx+1)*(ny+1)),Fx)
 
@@ -236,7 +235,6 @@ def main():
 
     # show and save deformation image
     fem_obj.plot_mesh()
-
     # export .plt file for TecPlot
     # fem_obj.tecplot()
 
