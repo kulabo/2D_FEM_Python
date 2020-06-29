@@ -13302,11 +13302,54 @@ $$
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>ここからは前出の定式化に登場した計算をFEMクラスのfemメソッドに追加していく。$K$マトリクスやその算出に必要なマトリクスはFEMクラスの内部メソッドとして実装して計算の見通しを良くする。
-nx、nyはそれぞれx、y方向の要素数、mesh_sizeは要素(正方形)の1辺、fix_nodesは固定するノードの指定、Fは力のかかるノードと方向・大きさを指定する。</p>
+<h2 id="3.&#23455;&#35013;">3.&#23455;&#35013;<a class="anchor-link" href="#3.&#23455;&#35013;">&#182;</a></h2>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>ここからは前出の定式化に登場した計算をFEMクラスのfemメソッドに追加していく。$K$マトリクスやその算出に必要なマトリクスはFEMクラスの内部メソッドとして実装して計算の見通しを良くする。</p>
 
 </div>
 </div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>FEMクラス内のfemの計算メソッドは以下である。</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">FEM</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">fem</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">K_sp</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_Kmat_sp</span><span class="p">()</span>
+
+        <span class="n">K_free_sp</span> <span class="o">=</span> <span class="n">K_sp</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">free_nodes</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">free_nodes</span><span class="p">]</span><span class="o">.</span><span class="n">T</span>
+
+        <span class="n">U</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">all_vector_count</span><span class="p">)</span>
+        <span class="n">solve_time</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="n">U</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">free_nodes</span><span class="p">]</span> <span class="o">=</span> <span class="n">spsolve</span><span class="p">(</span><span class="n">K_free_sp</span><span class="p">,</span> <span class="n">sp</span><span class="o">.</span><span class="n">lil_matrix</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">F</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">free_nodes</span><span class="p">])</span><span class="o">.</span><span class="n">tobsr</span><span class="p">()</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;solve time </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="o">-</span><span class="n">solve_time</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2"> [sec]&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">U</span> <span class="o">=</span> <span class="n">U</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython3"><pre><span></span> 
+</pre></div>
+
+    </div>
+</div>
+</div>
+
 </div>
     </div>
   </div>
