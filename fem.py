@@ -46,7 +46,7 @@ class FEM:
                                [nu, 1, 0],
                                [0, 0, (1-nu)/2]]) / (1-nu ** 2)
 
-    # fenite element method
+    # finite element method
     def fem(self):
         K_sp=self._Kmat_sp()
 
