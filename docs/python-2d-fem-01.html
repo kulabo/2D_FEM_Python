@@ -13101,7 +13101,7 @@ $$</p>
 $$
 F_e=K_eU_e
 $$</p>
-<p>ただし、系全体の合成マトリクス$K$は、各要素の剛性マトリクス$K_e$を用いて以下のように表される。
+<p>ただし、系全体の合成マトリクス$K$は、各要素の剛性マトリクス$K_e$の重ね合わせで表される。
 $$
 K=\sum_e^{\mathrm{All\;Elements}}K_e
 $$</p>
@@ -13362,6 +13362,49 @@ K_spに全体の剛性マトリクスを定義し、与えられた外力Fにつ
         <span class="k">return</span> <span class="n">K</span>
 </pre></div>
 <p>ある(x,y)番目の要素についての剛性マトリクスKeを求め、全体の剛性マトリクスKについて足し合わせる、という計算を、2重のforループで全要素にわたって行っていることがわかる。疎行列で実装したものについてもほぼ同様の計算をしている。</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>続いて、そのKeを実装する。定式化から、Keの計算式は</p>
+$$
+K_e=\sum_{i=1}^4 \sum_{j=1}^4 \omega_i \omega_j B^T(\xi_{i,j},\eta_{i,j})DB(\xi_{i,j},\eta_{i,j})det(J(\xi_{i,j},\eta_{i,j}))
+$$<p>Bマトリクス、Dマトリクス、Jマトリクスを計算して、それらを用いてKeに上式を足し合わせていくことでKeを求めている。</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">FEM</span><span class="p">:</span>
+    <span class="c1"># 略</span>
+    <span class="k">def</span> <span class="nf">_Kemat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+        <span class="n">Ke</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">8</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+            <span class="n">xi</span><span class="p">,</span> <span class="n">eta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">point</span><span class="p">[</span><span class="n">n</span><span class="p">]</span>
+            <span class="n">w</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weight</span><span class="p">[</span><span class="n">n</span><span class="p">]</span>
+            <span class="n">dNdxi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dNdxi</span><span class="p">(</span><span class="n">eta</span><span class="p">)</span>
+            <span class="n">dNdeta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_dNdeta</span><span class="p">(</span><span class="n">xi</span><span class="p">)</span>
+            <span class="n">J</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Jmat</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">dNdxi</span><span class="p">,</span> <span class="n">dNdeta</span><span class="p">)</span>
+            <span class="n">B</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Bmat</span><span class="p">(</span><span class="n">J</span><span class="p">,</span> <span class="n">dNdxi</span><span class="p">,</span> <span class="n">dNdeta</span><span class="p">)</span>
+            <span class="n">Ke</span> <span class="o">+=</span> <span class="n">w</span><span class="o">*</span><span class="p">(</span><span class="n">B</span><span class="o">.</span><span class="n">T</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Dmat</span><span class="p">)</span> <span class="o">@</span> <span class="n">B</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">J</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Ke</span>
+</pre></div>
+<p>別途Bマトリクス、Dマトリクス、Jマトリクスを実装する必要がある。</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Dマトリクスは弾性マトリクスと呼ばれ、ヤング率$E$、ポアソン比$\nu$のみで定まる各要素で共通なマトリクスである。このためDマトリクスは逐一計算する必要がなく、一度計算したものを使いまわせばよい。本実装ではクラスFEMの初期化の際に与えられたヤング率とポアソン比からDを計算している。また平面応力状態の場合について計算している。</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">FEM</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span><span class="p">,</span> <span class="n">mesh_size</span><span class="p">,</span> <span class="n">fix_nodes</span><span class="p">,</span> <span class="n">F</span><span class="p">,</span> <span class="n">E0</span><span class="p">,</span> <span class="n">nu</span><span class="p">):</span>
+    <span class="c1"># 略</span>
+    <span class="c1"># plane stress condition</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_Dmat</span> <span class="o">=</span> <span class="n">E0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="n">nu</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                            <span class="p">[</span><span class="n">nu</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+                            <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">nu</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span class="p">]])</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">nu</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+</pre></div>
 
 </div>
 </div>
