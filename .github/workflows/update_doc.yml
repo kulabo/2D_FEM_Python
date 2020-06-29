@@ -26,7 +26,7 @@ jobs:
         pip install jupyter
     - name: Make HTML file from jupyter notebook
       run: |
-        jupyter nbconvert Python2DFEM-notebook\python-2d-fem-01.ipynb --output-dir="docs"
+        jupyter nbconvert Python2DFEM-notebook/python-2d-fem-01.ipynb --output-dir="docs"
     - name: Commit files
       run: |
         git config --local user.email "action@github.com"
