@@ -15,8 +15,6 @@ class FEM:
         self.fix_nodes = fix_nodes
         self.F = F
 
-        self.E0 = E0
-
         self.all_element_count = nx*ny
         self.all_node_count = (nx+1)*(ny+1)
         self.all_vector_count = 2*(nx+1)*(ny+1)
@@ -44,7 +42,7 @@ class FEM:
 
         # nu: poisson ratio
         # plane stress condition
-        self._Dmat = self.E0 * np.array([[1, nu, 0],
+        self._Dmat = E0 * np.array([[1, nu, 0],
                                [nu, 1, 0],
                                [0, 0, (1-nu)/2]]) / (1-nu ** 2)
 
@@ -79,6 +77,7 @@ class FEM:
 
         return K
 
+    # stiffness matrix (sparse version)
     def _Kmat_sp(self):
         row = []
         col = []
@@ -90,9 +89,9 @@ class FEM:
                         2*top2+2, 2*top2+3, 2*top1+2, 2*top1+3]
                 
                 # "len(elem)" is slow because it reffers elem each time.
-                # Using "8" is hard-coded but fast.
+                # Using "8" is hard-coding but fast.
                 row_temp = list(itertools.chain.from_iterable([[i]*8 for i in elem]))
-                col_temp = elem*len(elem)
+                col_temp = elem*8
 
                 row.append(row_temp)
                 col.append(col_temp)
