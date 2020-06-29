@@ -40,7 +40,6 @@ class FEM:
         # Maybe two weights (for double integration) are needed.
         # But in this case, it is't necessary because all of them are 1.
 
-        # nu: poisson ratio
         # plane stress condition
         self._Dmat = E0 * np.array([[1, nu, 0],
                                [nu, 1, 0],
@@ -193,6 +192,14 @@ class FEM:
                        fmt="%.0f", delimiter=',')
 
 def main():
+    '''
+    E0 : Young's modulus
+    nu : Poisson's ratio
+
+    nx : Number of elements in x direction
+    ny : Number of elements in y direction
+    mesh_size : Length of element sides
+    '''
     # define material properties
     E0=100
     nu = 1/3
@@ -227,9 +234,11 @@ def main():
 
     print(f"elapse time {time.time()-start_time:.3f} [sec]")
 
-    #fem_obj.tecplot()
+    # show and save deformation image
     fem_obj.plot_mesh()
 
+    # export .plt file for TecPlot
+    # fem_obj.tecplot()
 
 if __name__ == "__main__":
     main()
