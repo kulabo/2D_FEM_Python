@@ -23,5 +23,3 @@ pip install jupyter
 ```
 python fem.py
 ```
-
-<!-- jupyter nbconvert Python2DFEM-notebook\python-2d-fem-01.ipynb --output-dir="docs" -->
