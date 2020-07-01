@@ -13224,11 +13224,35 @@ J
 \frac{\partial N_n}{\partial \xi} \\ 
 \frac{\partial N_n}{\partial \eta} 
 \end{array} \right)
-$$<p>となる。ここで$J$はヤコビマトリクスである。</p>
+$$<p>となる。ここで$J$はヤコビマトリクスである。
+ここで、要素内の任意の$x$,$y$座標について、正規化座標における座標値によって補間することを考えれば、形状関数$N$を用いて以下のようになる。</p>
 $$
 x = \sum_{n=1}^4 N_n x_n ,\;\;
 y = \sum_{n=1}^4 N_n y_n
-$$$$
+$$<p>なおこの形状関数は以下のような値をとる。</p>
+$$
+\left( \begin{array}{}
+N_1 \\ 
+N_2 \\ 
+N_3 \\ 
+N_4 
+\end{array} \right)=
+\frac{1}{4}
+\left( \begin{array}{}
+(1-\xi)(1-\eta) \\ 
+(1+\xi)(1-\eta) \\
+(1+\xi)(1+\eta) \\
+(1-\xi)(1+\eta) \\
+\end{array} \right)
+$$
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>ヤコビマトリクス$J$の成分は以下のように展開できるから、Jを行列の乗算の形式で表すと次のようになる。</p>
+$$
 \frac{\partial x}{\partial \xi} = \sum_{n=1}^4 \frac{\partial N_n}{\partial \xi} x_n
 ,\;\;
 \frac{\partial x}{\partial \eta} = \sum_{n=1}^4 \frac{\partial N_n}{\partial \eta} x_n
@@ -13254,21 +13278,8 @@ x_2 &amp; y_2 \\
 x_3 &amp; y_3 \\ 
 x_4 &amp; y_4 
 \end{array} \right)
-$$$$
-\left( \begin{array}{}
-N_1 \\ 
-N_2 \\ 
-N_3 \\ 
-N_4 
-\end{array} \right)=
-\frac{1}{4}
-\left( \begin{array}{}
-(1-\xi)(1-\eta) \\ 
-(1+\xi)(1-\eta) \\
-(1+\xi)(1+\eta) \\
-(1-\xi)(1+\eta) \\
-\end{array} \right)
-$$$$
+$$<p>上記の各成分は解析的に求まって、</p>
+$$
 \frac{\partial N_1}{\partial \xi}=-\frac{1-\eta}{4} ,\;\;
 \frac{\partial N_2}{\partial \xi}=\frac{1-\eta}{4} ,\;\;
 \frac{\partial N_3}{\partial \xi}=\frac{1+\eta}{4} ,\;\;
@@ -13278,7 +13289,15 @@ $$$$
 \frac{\partial N_2}{\partial \eta}=-\frac{1+\xi}{4} ,\;\;
 \frac{\partial N_3}{\partial \eta}=\frac{1+\xi}{4} ,\;\;
 \frac{\partial N_4}{\partial \eta}=\frac{1-\xi}{4}
-$$<p>$D$マトリクスは以下である。これは平面応力状態を仮定した際の式である。平面応力状態は薄い平板が面方向に荷重を受ける状態であり、板に垂直方向($z$方向)の応力を0とみなす仮定である。</p>
+$$<p>となる。</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div><div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>$D$マトリクスは以下である。これは平面応力状態を仮定した際の式である。平面応力状態は薄い平板が面方向に荷重を受ける状態であり、板に垂直方向($z$方向)の応力を0とみなす仮定である。</p>
 $$
 D=\frac{E}{1-\nu^2}
 \left( \begin{array}{}
@@ -13296,13 +13315,6 @@ D=\frac{E}{(1+\nu)(1-2\nu)}
 0 &amp; 0 &amp; \frac{1-2\nu}{2} 
 \end{array} \right)
 $$
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div><div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="3.&#23455;&#35013;">3.&#23455;&#35013;<a class="anchor-link" href="#3.&#23455;&#35013;">&#182;</a></h2>
 </div>
 </div>
 </div>
